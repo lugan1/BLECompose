@@ -13,7 +13,7 @@ import java.io.IOException
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "preferences")
 
-suspend fun Context.readStringFromDataStore(key: Preferences.Key<String>): Flow<String> {
+fun Context.readStringFromDataStore(key: Preferences.Key<String>): Flow<String> {
     return dataStore.data
         .catch { exception ->
             if (exception is IOException) {

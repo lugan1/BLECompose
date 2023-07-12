@@ -12,35 +12,22 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.example.sample.blesampleapplication.view.home.HomeScreen
+import com.example.sample.blesampleapplication.view.measure.MeasureScreen
 import com.example.sample.blesampleapplication.view.pairing.PairingScreen
 
 
 @Composable
 fun NavContainer(innerPadding: PaddingValues, navHostController: NavHostController) {
-    NavHost(modifier = Modifier.padding(innerPadding), navController = navHostController, startDestination = PAGE_INFO.ParingScreen.route) {
-        composable(PAGE_INFO.ParingScreen.route) { PairingScreen() }
-    }
-}
-
-@Composable
-fun BottomNavigationBar(navController: NavHostController) {
-    val navItems = listOf("1", "2", "3")
-    val selected by remember { mutableStateOf("1") }
-
-    NavigationBar {
-        navItems.forEach { navItem ->
-            NavigationBarItem(
-                icon = {},
-                selected = navItem == selected,
-                label = {},
-                onClick = { navController.navigate(navItem) }
-            )
-        }
+    NavHost(modifier = Modifier.padding(innerPadding), navController = navHostController, startDestination = PAGE_INFO.Home.route) {
+        composable(PAGE_INFO.Home.route) { HomeScreen() }
+        composable(PAGE_INFO.Measure.route) { MeasureScreen(navHostController) }
+        composable(PAGE_INFO.Pairing.route) { PairingScreen(navHostController) }
     }
 }
 
 // 네비게이션 라우트 하는 기능을 모음한 클래스
-class RouteAction(val navController: NavHostController) {
+class RouteAction(private val navController: NavHostController) {
 
     // 특정 페이지 이동
     val navTo: (PAGE_INFO) -> Unit = { page ->
