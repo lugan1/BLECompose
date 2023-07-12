@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -13,7 +14,9 @@ import java.io.IOException
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "preferences")
 
-fun Context.readStringFromDataStore(key: Preferences.Key<String>): Flow<String> {
+fun Context.readStringFromDataStore(key: DataStoreKey): Flow<String> {
+    val datastoreKey = stringPreferencesKey(key.value)
+
     return dataStore.data
         .catch { exception ->
             if (exception is IOException) {
@@ -22,11 +25,10 @@ fun Context.readStringFromDataStore(key: Preferences.Key<String>): Flow<String> 
                 throw exception
             }
         }
-        .map { preferences -> preferences[key] ?: "" }
+        .map { preferences -> preferences[datastoreKey] ?: "" }
 }
 
-suspend fun Context.updateStringToDataStore(key: Preferences.Key<String>, value: String) {
-    dataStore.edit { preferences ->
-        preferences[key] = value
-    }
+suspend fun Context.updateStringToDataStore(key: DataStoreKey, value: String) {
+    val datastoreKey = stringPreferencesKey(key.value)
+    dataStore.edit { preferences -> preferences[datastoreKey] = value }
 }
