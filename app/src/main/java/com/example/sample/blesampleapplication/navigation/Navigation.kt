@@ -1,9 +1,17 @@
 package com.example.sample.blesampleapplication.navigation
 
+import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
+import android.util.Log
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -13,11 +21,34 @@ import com.example.sample.blesampleapplication.view.pairing.PairingScreen
 
 
 @Composable
-fun NavContainer(innerPadding: PaddingValues, navHostController: NavHostController) {
+fun NavContainer(innerPadding: PaddingValues, navHostController: NavHostController ) {
+    RouteEventHandle(navHostController = navHostController)
     NavHost(modifier = Modifier.padding(innerPadding), navController = navHostController, startDestination = PAGE_INFO.Home.route) {
-        composable(PAGE_INFO.Home.route) { HomeScreen() }
+        composable(PAGE_INFO.Home.route) { HomeScreen(navController = navHostController) }
         composable(PAGE_INFO.Measure.route) { MeasureScreen() }
         composable(PAGE_INFO.Pairing.route) { PairingScreen() }
+    }
+}
+
+@SuppressLint("SourceLockedOrientationActivity")
+@Composable
+fun RouteEventHandle(
+    navHostController: NavHostController
+) {
+    val activity = LocalContext.current as Activity
+    val configuration = LocalConfiguration.current
+
+    LaunchedEffect(key1 = navHostController) {
+        navHostController.addOnDestinationChangedListener { _, destination, _ ->
+            Log.d("navigation", "destination $destination")
+
+            if(destination.route == PAGE_INFO.Measure.route && configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
+                activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            }
+            else if(destination.route != PAGE_INFO.Measure.route && configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            }
+        }
     }
 }
 

@@ -6,25 +6,45 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import com.example.sample.blesampleapplication.util.DataStoreKey
-import com.example.sample.blesampleapplication.util.readStringFromDataStore
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import com.example.sample.blesampleapplication.navigation.PAGE_INFO
+import com.example.sample.blesampleapplication.ui.component.Alert
+import com.example.sample.blesampleapplication.ui.component.DialogState
 
 @Composable
-fun HomeScreen() {
+fun HomeScreen(
+    navController: NavController,
+    homeViewModel: HomeViewModel = hiltViewModel()
+) {
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally) {
 
-        val macAddress = LocalContext.current.readStringFromDataStore(DataStoreKey.MAC_ADDRESS).collectAsState(initial = Unit)
+        val macAddress by homeViewModel.macAddress.collectAsState(initial = "loading...")
+        val dialogState by homeViewModel.dialogState.collectAsState()
 
-        if(macAddress.value == Unit) {
-            //todo: 얼럿 다이얼로그 출력
+        when(dialogState) {
+            is DialogState.show -> {
+                val currentState = dialogState as DialogState.show
+                Alert(
+                    titleTxt = currentState.title,
+                    bodyText = currentState.body,
+                    confirmHandle = {
+                        currentState.onConfirm
+                        navController.navigate(PAGE_INFO.Pairing.route)
+                    },
+                    dismissHandle = currentState.onDismiss,
+                    onDismissRequest = { homeViewModel.dismissDialog() }
+                )
+            }
+            else -> {}
         }
 
-        Text(text = "홈")
+        Text(text = macAddress)
     }
 }
