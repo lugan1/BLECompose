@@ -17,6 +17,7 @@ sealed class DialogState {
 
 @Composable
 fun Alert(
+    modifier: Modifier = Modifier,
     titleTxt: String,
     bodyText: String,
     confirmText: String = "확인",
@@ -26,6 +27,7 @@ fun Alert(
     onDismissRequest: () -> Unit) {
 
     AlertDialog(
+        modifier = modifier,
         title = {
             Text(modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, text = titleTxt)
         },
@@ -35,7 +37,8 @@ fun Alert(
         shape = RoundedCornerShape(size = 30f),
         confirmButton = { ConfirmButton(confirmText, confirmHandle) },
         dismissButton = { DismissButton(dismissText, dismissHandle) },
-        onDismissRequest = onDismissRequest)
+        onDismissRequest = onDismissRequest
+    )
 }
 
 

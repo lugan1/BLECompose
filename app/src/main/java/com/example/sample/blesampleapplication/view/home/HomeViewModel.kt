@@ -4,48 +4,65 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.sample.blesampleapplication.data.DataStore
 import com.example.sample.blesampleapplication.data.DataStoreKey
-import com.example.sample.blesampleapplication.ui.component.DialogState
+import com.example.sample.blesampleapplication.navigation.PAGE_INFO
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(dataStore: DataStore) : ViewModel() {
-    val macAddress = dataStore.readString(DataStoreKey.MAC_ADDRESS)
+    private val macAddress = dataStore.readString(DataStoreKey.MAC_ADDRESS)
 
-    private val _dialogState = MutableStateFlow<DialogState>(DialogState.dismiss)
-    val dialogState = _dialogState.asStateFlow()
+    private val _homeState: MutableStateFlow<HomeState> = MutableStateFlow(HomeState.Idle)
+    val homeState: StateFlow<HomeState> = _homeState
+
+    private val homeIntent: Channel<HomeIntent> = Channel()
 
     init {
-        checkMacAddress()
+        handleIntent()
+        loadMacAddress()
     }
 
-    private fun checkMacAddress() {
+    fun sendIntent(intent: HomeIntent) = viewModelScope.launch(Dispatchers.IO) { homeIntent.send(intent) }
+
+    private fun handleIntent() {
         viewModelScope.launch {
-            macAddress
-                .filter { it.isEmpty() }
-                .collect {
-                    showDialog(
-                        title = "밴드 연동확인",
-                        body = "밴드가 페어링되어있지 않습니다.\n밴드 연동페이지로 이동하시겠습니까?",
-                        onConfirm = ::navToPairingScreen
-                    )
+            homeIntent.consumeAsFlow()
+                .collect{ intent ->
+                    when(intent) {
+                        is HomeIntent.LoadMacAddress -> loadMacAddress()
+                        is HomeIntent.DismissAlert -> _homeState.value = HomeState.Idle
+                    }
                 }
         }
     }
 
-    fun navToPairingScreen() {
-
+    private fun loadMacAddress() {
+        viewModelScope.launch(Dispatchers.IO) {
+            macAddress.collect{ mac ->
+                if (mac.isEmpty()) {
+                    _homeState.value = HomeState.MacAddressEmpty
+                }
+                else {
+                    _homeState.value = HomeState.Success(mac)
+                }
+            }
+        }
     }
+}
 
-    fun showDialog(title: String, body: String, onConfirm: () -> Unit) {
-        _dialogState.value = DialogState.show(title = title, body = body, onConfirm = onConfirm, onDismiss = { dismissDialog() })
-    }
+sealed class HomeState {
+    object Idle: HomeState()
+    data class Success(val macAddress: String): HomeState()
+    object MacAddressEmpty: HomeState()
+}
 
-    fun dismissDialog() {
-        _dialogState.value = DialogState.dismiss
-    }
+sealed class HomeIntent {
+    object LoadMacAddress: HomeIntent()
+    object DismissAlert: HomeIntent()
 }

@@ -1,19 +1,22 @@
 package com.example.sample.blesampleapplication.view.home
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.example.sample.blesampleapplication.navigation.PAGE_INFO
 import com.example.sample.blesampleapplication.ui.component.Alert
-import com.example.sample.blesampleapplication.ui.component.DialogState
+
 
 @Composable
 fun HomeScreen(
@@ -25,26 +28,43 @@ fun HomeScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally) {
 
-        val macAddress by homeViewModel.macAddress.collectAsState(initial = "loading...")
-        val dialogState by homeViewModel.dialogState.collectAsState()
+        val state by homeViewModel.homeState.collectAsState()
+        var macAddress by remember { mutableStateOf("연동필요") }
 
-        when(dialogState) {
-            is DialogState.show -> {
-                val currentState = dialogState as DialogState.show
+        when(state) {
+            is HomeState.Success -> {
+                macAddress = (state as HomeState.Success).macAddress
+            }
+
+            HomeState.MacAddressEmpty -> {
                 Alert(
-                    titleTxt = currentState.title,
-                    bodyText = currentState.body,
-                    confirmHandle = {
-                        currentState.onConfirm
-                        navController.navigate(PAGE_INFO.Pairing.route)
-                    },
-                    dismissHandle = currentState.onDismiss,
-                    onDismissRequest = { homeViewModel.dismissDialog() }
+                    titleTxt = "밴드 연동확인",
+                    bodyText = "밴드가 페어링되어있지 않습니다.\n 밴드 연동페이지로 이동하시겠습니까?",
+                    confirmHandle = { navController.navigate(PAGE_INFO.Pairing.route) },
+                    onDismissRequest = { homeViewModel.sendIntent(HomeIntent.DismissAlert) },
+                    dismissHandle = { homeViewModel.sendIntent(HomeIntent.DismissAlert) }
                 )
             }
-            else -> {}
+            HomeState.Idle -> {}
         }
 
-        Text(text = macAddress)
+        Row(
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically) {
+
+            Text("연동된 밴드: ")
+            Spacer(Modifier.width(2.dp))
+            Box(modifier = Modifier.width(LocalConfiguration.current.screenWidthDp.dp / 3)
+                .height(30.dp)
+                .border(width = 2.dp, color = Color.Black, shape = RectangleShape)) {
+                Text(modifier = Modifier.align(Alignment.Center), text = macAddress)
+            }
+        }
     }
+}
+
+@Preview
+@Composable
+fun HomeScreenPreview() {
+    HomeScreen(rememberNavController())
 }
