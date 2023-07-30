@@ -6,10 +6,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
 @HiltViewModel
-class PairingViewModel @Inject constructor(amoOmega: AmoOmega) : ViewModel() {
+class PairingViewModel @Inject constructor(private val amoOmega: AmoOmega) : ViewModel() {
 
     fun requestPermission() {
-        
+
     }
 
     private fun startScan() {

@@ -4,13 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.sample.blesampleapplication.data.DataStore
 import com.example.sample.blesampleapplication.data.DataStoreKey
-import com.example.sample.blesampleapplication.navigation.PAGE_INFO
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.consumeAsFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -44,14 +44,9 @@ class HomeViewModel @Inject constructor(dataStore: DataStore) : ViewModel() {
 
     private fun loadMacAddress() {
         viewModelScope.launch(Dispatchers.IO) {
-            macAddress.collect{ mac ->
-                if (mac.isEmpty()) {
-                    _homeState.value = HomeState.MacAddressEmpty
-                }
-                else {
-                    _homeState.value = HomeState.Success(mac)
-                }
-            }
+            macAddress
+                .map { mac -> if(mac.isEmpty()) HomeState.MacAddressEmpty else HomeState.Success(mac) }
+                .collect{ mac -> _homeState.value = mac }
         }
     }
 }
