@@ -46,7 +46,7 @@ class HomeViewModel @Inject constructor(dataStore: DataStore) : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             macAddress
                 .map { mac -> if(mac.isEmpty()) HomeState.MacAddressEmpty else HomeState.Success(mac) }
-                .collect{ mac -> _homeState.value = mac }
+                .collect{ state -> _homeState.value = state }
         }
     }
 }
