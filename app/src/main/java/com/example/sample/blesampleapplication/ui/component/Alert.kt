@@ -1,5 +1,7 @@
 package com.example.sample.blesampleapplication.ui.component
 
+
+
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -9,11 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-
-sealed class DialogState {
-    object dismiss: DialogState()
-    data class show(val title: String, val body: String, val onConfirm: () -> Unit, val onDismiss: () -> Unit): DialogState()
-}
 
 @Composable
 fun Alert(
@@ -35,8 +32,8 @@ fun Alert(
             Text(modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, softWrap = true, text = bodyText)
         },
         shape = RoundedCornerShape(size = 30f),
-        confirmButton = { ConfirmButton(confirmText, confirmHandle) },
-        dismissButton = { DismissButton(dismissText, dismissHandle) },
+        confirmButton = { ConfirmButton(confirmText = confirmText, confirmHandle = confirmHandle) },
+        dismissButton = { DismissButton(dismissText = dismissText, dismissHandle = dismissHandle) },
         onDismissRequest = onDismissRequest
     )
 }
@@ -44,19 +41,21 @@ fun Alert(
 
 @Composable
 fun ConfirmButton(
+    modifier: Modifier = Modifier,
     confirmText: String = "확인",
     confirmHandle: () -> Unit) {
 
-    Button(onClick = confirmHandle) {
+    Button(modifier = modifier, onClick = confirmHandle) {
         Text(text = confirmText)
     }
 }
 
 @Composable
 fun DismissButton(
+    modifier: Modifier = Modifier,
     dismissText: String = "취소",
     dismissHandle: () -> Unit) {
-    Button(onClick = dismissHandle) {
+    Button(modifier = modifier, onClick = dismissHandle) {
         Text(text = dismissText)
     }
 }
