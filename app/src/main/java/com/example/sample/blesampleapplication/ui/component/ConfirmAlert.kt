@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -13,9 +14,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 
 @Composable
-fun Alert(
+fun ConfirmAlert(
     modifier: Modifier = Modifier,
-    titleTxt: String,
+    titleText: String,
     bodyText: String,
     confirmText: String = "확인",
     confirmHandle: () -> Unit,
@@ -26,7 +27,7 @@ fun Alert(
     AlertDialog(
         modifier = modifier,
         title = {
-            Text(modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, text = titleTxt)
+            Text(modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, text = titleText)
         },
         text = {
             Text(modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, softWrap = true, text = bodyText)
@@ -34,6 +35,29 @@ fun Alert(
         shape = RoundedCornerShape(size = 30f),
         confirmButton = { ConfirmButton(confirmText = confirmText, confirmHandle = confirmHandle) },
         dismissButton = { DismissButton(dismissText = dismissText, dismissHandle = dismissHandle) },
+        onDismissRequest = onDismissRequest
+    )
+}
+
+@Composable
+fun Alert(
+    modifier: Modifier = Modifier,
+    titleText: String,
+    bodyText: String,
+    confirmText: String = "확인",
+    confirmHandle: () -> Unit,
+    onDismissRequest: () -> Unit
+) {
+    AlertDialog(
+        modifier = modifier,
+        title = {
+            Text(modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, text = titleText)
+        },
+        text = {
+            Text(modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, softWrap = true, text = bodyText)
+        },
+        shape = RoundedCornerShape(size = 30f),
+        confirmButton = { ConfirmButton(confirmText = confirmText, confirmHandle = confirmHandle) },
         onDismissRequest = onDismissRequest
     )
 }
@@ -60,11 +84,18 @@ fun DismissButton(
     }
 }
 
+
 @Preview
 @Composable
 fun AlertPreview() {
-    Alert(
-        titleTxt = "타이틀",
+    Alert(titleText = "타이틀", bodyText = "텍스트", confirmHandle = {}, onDismissRequest = {})
+}
+
+@Preview
+@Composable
+fun ConfirmAlertPreview() {
+    ConfirmAlert(
+        titleText = "타이틀",
         bodyText = "텍스트",
         confirmHandle = {},
         dismissHandle = {},

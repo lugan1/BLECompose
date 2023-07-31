@@ -15,34 +15,34 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.sample.blesampleapplication.navigation.PAGE_INFO
-import com.example.sample.blesampleapplication.ui.component.Alert
+import com.example.sample.blesampleapplication.ui.component.ConfirmAlert
 
 
 @Composable
 fun HomeScreen(
     navController: NavController,
-    homeViewModel: HomeViewModel = hiltViewModel()
+    state: HomeState,
+    sendIntent: (HomeIntent) -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally) {
 
-        val state by homeViewModel.homeState.collectAsState()
         var macAddress by remember { mutableStateOf("연동필요") }
 
         when(state) {
             is HomeState.Success -> {
-                macAddress = (state as HomeState.Success).macAddress
+                macAddress = state.macAddress
             }
 
             HomeState.MacAddressEmpty -> {
-                Alert(
-                    titleTxt = "밴드 연동확인",
+                ConfirmAlert(
+                    titleText = "밴드 연동확인",
                     bodyText = "밴드가 페어링되어있지 않습니다.\n 밴드 연동페이지로 이동하시겠습니까?",
                     confirmHandle = { navController.navigate(PAGE_INFO.Pairing.route) },
-                    onDismissRequest = { homeViewModel.sendIntent(HomeIntent.DismissAlert) },
-                    dismissHandle = { homeViewModel.sendIntent(HomeIntent.DismissAlert) }
+                    onDismissRequest = { sendIntent(HomeIntent.DismissAlert) },
+                    dismissHandle = { sendIntent(HomeIntent.DismissAlert) }
                 )
             }
             HomeState.Idle -> {}
@@ -66,5 +66,9 @@ fun HomeScreen(
 @Preview
 @Composable
 fun HomeScreenPreview() {
-    HomeScreen(rememberNavController())
+    HomeScreen(
+        navController = rememberNavController(),
+        state = HomeState.Success("00:00:00:00:00:00"),
+        sendIntent = {  }
+    )
 }

@@ -9,24 +9,37 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.sample.blesampleapplication.view.home.HomeScreen
+import com.example.sample.blesampleapplication.view.home.HomeViewModel
 import com.example.sample.blesampleapplication.view.measure.MeasureScreen
 import com.example.sample.blesampleapplication.view.pairing.PairingScreen
+import com.example.sample.blesampleapplication.view.pairing.PairingViewModel
 
 
 @Composable
 fun NavContainer(innerPadding: PaddingValues, navHostController: NavHostController ) {
     RouteEventHandle(navHostController = navHostController)
     NavHost(modifier = Modifier.padding(innerPadding), navController = navHostController, startDestination = PAGE_INFO.Home.route) {
-        composable(PAGE_INFO.Home.route) { HomeScreen(navController = navHostController) }
+        composable(PAGE_INFO.Home.route) {
+            val viewModel: HomeViewModel = hiltViewModel()
+            val state by viewModel.homeState.collectAsState()
+            HomeScreen(navController = navHostController, state = state, sendIntent = viewModel::sendIntent)
+        }
         composable(PAGE_INFO.Measure.route) { MeasureScreen() }
-        composable(PAGE_INFO.Pairing.route) { PairingScreen() }
+        composable(PAGE_INFO.Pairing.route) {
+            val viewModel: PairingViewModel = hiltViewModel()
+            val state by viewModel.uiState.collectAsState()
+            PairingScreen(state = state, sendIntent = viewModel::sendIntent)
+        }
     }
 }
 
