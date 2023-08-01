@@ -1,13 +1,11 @@
 package com.example.sample.blesampleapplication.view.pairing
 
-import android.nfc.Tag
+import android.annotation.SuppressLint
 import android.os.Build
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.softnet.module.blemodule.amoband.AmoOmega
 import com.softnet.module.blemodule.amoband.model.ScanDeviceVo
-import com.softnet.module.blemodule.ble.enumeration.CheckStatus
 import com.softnet.module.blemodule.ble.enumeration.CheckStatus.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -81,14 +79,25 @@ class PairingViewModel @Inject constructor(private val amoOmega: AmoOmega) : Vie
     }
 
     private fun startScan() {
-        //todo: check ble enable
         _uiState.value = PairingUIState.Scanning()
-        //todo: startScan
+        val subscriber = amoOmega.startScan("", 10)
+            .subscribe(
+                { scanDevice ->
+                    _uiState.value = PairingUIState.ScanResult(scanDevice)
+                },
+                { throwable ->
+                    _uiState.value = PairingUIState.ScanFail(throwable.message ?: "스캔 실패")
+                },
+                {
+                    _uiState.value = PairingUIState.Idle()
+                })
     }
 
     private fun stopScan() {
-        _uiState.value = PairingUIState.Idle()
-        //todo: stopScan
+        val subscriber = amoOmega.stopScan()
+            .subscribe{
+                _uiState.value = PairingUIState.Idle()
+            }
     }
 }
 
@@ -110,7 +119,7 @@ sealed class PairingUIState {
     object PermissionDenied: PairingUIState()
 
     data class ScanFail(val message: String): PairingUIState()
-    data class ScanResult(val result: List<ScanDeviceVo>): PairingUIState()
+    data class ScanResult(val result: ScanDeviceVo): PairingUIState()
 }
 
 sealed class PairingIntent {
