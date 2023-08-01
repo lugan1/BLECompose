@@ -1,5 +1,6 @@
 package com.example.sample.blesampleapplication.view.home
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
@@ -31,6 +32,10 @@ fun HomeScreen(
 
         var macAddress by remember { mutableStateOf("연동필요") }
 
+        LaunchedEffect(true) {
+            sendIntent(HomeIntent.LoadMacAddress)
+        }
+
         when(state) {
             is HomeState.Success -> {
                 macAddress = state.macAddress
@@ -54,9 +59,11 @@ fun HomeScreen(
 
             Text("연동된 밴드: ")
             Spacer(Modifier.width(2.dp))
-            Box(modifier = Modifier.width(LocalConfiguration.current.screenWidthDp.dp / 3)
+            Box(modifier = Modifier
+                .width(LocalConfiguration.current.screenWidthDp.dp / 3)
                 .height(30.dp)
-                .border(width = 2.dp, color = Color.Black, shape = RectangleShape)) {
+                .background(Color.LightGray)
+                .border(width = 1.dp, color = Color.Gray, shape = RectangleShape)) {
                 Text(modifier = Modifier.align(Alignment.Center), text = macAddress)
             }
         }

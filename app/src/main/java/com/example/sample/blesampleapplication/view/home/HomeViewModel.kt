@@ -25,7 +25,6 @@ class HomeViewModel @Inject constructor(dataStore: DataStore) : ViewModel() {
 
     init {
         handleIntent()
-        loadMacAddress()
     }
 
     fun sendIntent(intent: HomeIntent) = viewModelScope.launch(Dispatchers.IO) { homeIntent.send(intent) }

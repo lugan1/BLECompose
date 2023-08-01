@@ -1,5 +1,9 @@
 package com.example.sample.blesampleapplication.view.pairing
 
+import android.os.Build
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,18 +14,24 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
+import androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale
 import com.example.sample.blesampleapplication.navigation.PAGE_INFO
 import com.example.sample.blesampleapplication.ui.component.Alert
+import com.example.sample.blesampleapplication.ui.component.BluetoothPermissionTextProvider
+import com.example.sample.blesampleapplication.ui.component.PermissionDialog
 import com.example.sample.blesampleapplication.ui.component.TopBar
+import com.example.sample.blesampleapplication.ui.component.openAppSettings
 
 @Composable
 fun PairingScreen(
@@ -40,26 +50,27 @@ fun PairingScreen(
 
             when(state) {
                 is PairingUIState.Idle -> {
-                    buttonText = "스캔하기"
-                    pairingIntent = PairingIntent.StartScan
-                    showProgressBar = false
+                    buttonText = state.buttonText
+                    pairingIntent = state.pairingIntent
+                    showProgressBar = state.showProgressBar
                 }
-                is PairingUIState.Scanning -> {
-                    buttonText = "스캔중지"
-                    pairingIntent = PairingIntent.StopScan
-                    showProgressBar = true
+                PairingUIState.RequestPermission -> {
+                    LaunchBluetoothPermissionActivity(sendIntent)
+                }
+                PairingUIState.PermissionDenied -> {
+                    ShowPermissionDeniedAlert(sendIntent)
                 }
                 is PairingUIState.ScanFail -> {
-                    val message = state.message
-                    val dismiss = { sendIntent(PairingIntent.DismissAlert) }
-                    Alert(
-                        titleText = "스캔 실패",
-                        bodyText = message,
-                        confirmHandle = dismiss,
-                        onDismissRequest = dismiss
-                    )
+                    ShowAlert(message = state.message, sendIntent = sendIntent)
                 }
-                else -> {}
+                is PairingUIState.Scanning -> {
+                    buttonText = state.buttonText
+                    pairingIntent = state.pairingIntent
+                    showProgressBar = state.showProgressBar
+                }
+                is PairingUIState.ScanResult -> {
+                    TODO()
+                }
             }
 
             PairingTopContainer(
@@ -69,6 +80,49 @@ fun PairingScreen(
             )
 
             ScanResultColumn()
+        }
+    }
+}
+
+@Composable
+fun ShowAlert(
+    message: String,
+    sendIntent: (PairingIntent) -> Unit,
+) {
+    val dismiss = { sendIntent(PairingIntent.DismissAlert) }
+    Alert(
+        titleText = "스캔 실패",
+        bodyText = message,
+        confirmHandle = dismiss,
+        onDismissRequest = dismiss
+    )
+}
+
+@Composable
+fun ShowPermissionDeniedAlert(
+    sendIntent: (PairingIntent) -> Unit,
+) {
+    val activity = LocalContext.current as ComponentActivity
+    PermissionDialog(
+        permissionTextProvider = BluetoothPermissionTextProvider(),
+        isPermanentlyDeclined = !shouldShowRequestPermissionRationale(activity, android.Manifest.permission.BLUETOOTH),
+        onDismiss = { sendIntent(PairingIntent.DismissAlert) },
+        onConfirm = { sendIntent(PairingIntent.DismissAlert) },
+        onGoToAppSettingsClick = { activity.openAppSettings() })
+}
+
+@Composable
+fun LaunchBluetoothPermissionActivity(
+    sendIntent: (PairingIntent) -> Unit,
+) {
+    if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val bluetoothPermissionResultLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission(),
+            onResult = { isGranted -> sendIntent(PairingIntent.OnPermissionResult(isGranted)) }
+        )
+
+        SideEffect {
+            bluetoothPermissionResultLauncher.launch(android.Manifest.permission.BLUETOOTH_CONNECT)
         }
     }
 }
@@ -112,7 +166,7 @@ fun ScanResultColumn() {
 @Preview
 @Composable
 fun PairingScreenPreview() {
-    PairingScreen(state = PairingUIState.Idle, sendIntent = {})
+    PairingScreen(state = PairingUIState.Idle(), sendIntent = {})
 }
 
 @Preview
