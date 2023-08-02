@@ -20,6 +20,10 @@ android {
         vectorDrawables {
             useSupportLibrary true
         }
+
+        compileOptions {
+            coreLibraryDesugaringEnabled true
+        }
     }
 
     buildTypes {
@@ -92,6 +96,9 @@ dependencies {
     // Hilt Compose
     implementation 'androidx.hilt:hilt-navigation-compose:1.0.0'
     implementation "org.jetbrains.kotlin:kotlin-reflect:1.9.0"
+
+    //API 24 이상에서만 지원하는 Java8 라이브러리 대체
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.3'
 }
 
 // Allow references to generated code

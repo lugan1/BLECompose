@@ -27,7 +27,6 @@ fun HomeScreen(
 ) {
     Column(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally) {
 
         var macAddress by remember { mutableStateOf("연동필요") }
@@ -53,6 +52,7 @@ fun HomeScreen(
             HomeState.Idle -> {}
         }
 
+        Spacer(modifier = Modifier.height(20.dp))
         Row(
             modifier = Modifier.align(Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically) {

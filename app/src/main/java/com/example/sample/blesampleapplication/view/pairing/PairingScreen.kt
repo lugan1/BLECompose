@@ -24,6 +24,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,81 +41,113 @@ import androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale
 import com.example.sample.blesampleapplication.navigation.PAGE_INFO
 import com.example.sample.blesampleapplication.ui.component.Alert
 import com.example.sample.blesampleapplication.ui.component.BluetoothPermissionTextProvider
+import com.example.sample.blesampleapplication.ui.component.LoadingDialog
 import com.example.sample.blesampleapplication.ui.component.PermissionDialog
 import com.example.sample.blesampleapplication.ui.component.TopBar
 import com.example.sample.blesampleapplication.ui.component.openAppSettings
+import com.softnet.module.blemodule.amoband.model.AdvData
 import com.softnet.module.blemodule.amoband.model.ScanDeviceVo
+import com.softnet.module.blemodule.util.ByteUtil
 
 @Composable
 fun PairingScreen(
-    state: PairingUIState,
+    state: PairUiState,
     sendIntent: (PairingIntent) -> Unit,
+    completeNavigateTo: () -> Unit,
 ) {
+    DisposableEffect(true) {
+        onDispose {
+            sendIntent(PairingIntent.Dispose)
+        }
+    }
+
     Scaffold(topBar = { TopBar(title = PAGE_INFO.Pairing.title) }) {
         Column(modifier = Modifier
             .padding(it)
             .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally) {
 
-            var buttonText by remember { mutableStateOf("스캔하기") }
-            var pairingIntent: PairingIntent by remember { mutableStateOf(PairingIntent.StartScan) }
+            var buttonText by remember { mutableStateOf("") }
             var showProgressBar by remember { mutableStateOf(false) }
             var scanDevices by remember { mutableStateOf(listOf<ScanDeviceVo>()) }
 
             when(state) {
-                is PairingUIState.Idle -> {
+                is PairUiState.Idle -> {
                     buttonText = state.buttonText
-                    pairingIntent = state.pairingIntent
                     showProgressBar = state.showProgressBar
                 }
-                PairingUIState.RequestPermission -> {
+                PairUiState.RequestPermission -> {
                     LaunchBluetoothPermissionActivity(sendIntent)
                 }
-                PairingUIState.PermissionDenied -> {
+                PairUiState.PermissionDenied -> {
                     ShowPermissionDeniedAlert(sendIntent)
                 }
-                is PairingUIState.ScanFail -> {
-                    ShowAlert(message = state.message, sendIntent = sendIntent)
+                is PairUiState.ScanFail -> {
+                    ShowAlert(
+                        title = state.title,
+                        message = state.message,
+                        onConfirm = { sendIntent(PairingIntent.DismissAlert) },
+                        onDismissRequest = { sendIntent(PairingIntent.DismissAlert) }
+                    )
                 }
-                is PairingUIState.Scanning -> {
+                is PairUiState.Scanning -> {
                     buttonText = state.buttonText
-                    pairingIntent = state.pairingIntent
                     showProgressBar = state.showProgressBar
                 }
-                is PairingUIState.ScanResult -> {
+                is PairUiState.ScanResult -> {
                     val scanDeviceIndex = scanDevices.indexOfFirst { it.macAddr == state.result.macAddr }
                     scanDevices = if (scanDeviceIndex != -1) {
-                        scanDevices.mapIndexed { index, device ->
-                            if (index == scanDeviceIndex) state.result else device
-                        }
+                        scanDevices.mapIndexed { index, device -> if (index == scanDeviceIndex) state.result else device }
                     } else {
                         scanDevices + state.result
                     }
+                }
+                is PairUiState.Connecting -> {
+                    LoadingDialog(
+                        onDismissRequest = { sendIntent(PairingIntent.DismissAlert) },
+                        text = state.text
+                    )
+                }
+                is PairUiState.ConnectingFail -> {
+                    ShowAlert(
+                        title = state.title,
+                        message = state.message,
+                        onConfirm = { sendIntent(PairingIntent.DismissAlert) },
+                        onDismissRequest = { sendIntent(PairingIntent.DismissAlert) }
+                    )
+                }
+                is PairUiState.Connected -> {
+                    ShowAlert(
+                        title = state.title,
+                        message = state.message,
+                        onConfirm = completeNavigateTo,
+                        onDismissRequest = { sendIntent(PairingIntent.DismissAlert) })
                 }
             }
 
             PairingTopContainer(
                 buttonText = buttonText,
-                onClick = { sendIntent(pairingIntent) },
+                onClick = { sendIntent(if(state is PairUiState.Idle) PairingIntent.RequestPermission else PairingIntent.StopScan) },
                 showProgressBar = showProgressBar
             )
 
-            ScanResultColumn(scanDevices)
+            ScanResultColumn(scanDeviceList = scanDevices, sendIntent = sendIntent)
         }
     }
 }
 
 @Composable
 fun ShowAlert(
+    title: String,
     message: String,
-    sendIntent: (PairingIntent) -> Unit,
+    onConfirm: () -> Unit,
+    onDismissRequest: () -> Unit
 ) {
-    val dismiss = { sendIntent(PairingIntent.DismissAlert) }
     Alert(
-        titleText = "스캔 실패",
+        titleText = title,
         bodyText = message,
-        confirmHandle = dismiss,
-        onDismissRequest = dismiss
+        confirmHandle = onConfirm,
+        onDismissRequest = onDismissRequest
     )
 }
 
@@ -125,7 +158,14 @@ fun ShowPermissionDeniedAlert(
     val activity = LocalContext.current as ComponentActivity
     PermissionDialog(
         permissionTextProvider = BluetoothPermissionTextProvider(),
-        isPermanentlyDeclined = !shouldShowRequestPermissionRationale(activity, android.Manifest.permission.BLUETOOTH_SCAN),
+        isPermanentlyDeclined = !shouldShowRequestPermissionRationale(
+            activity,
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                android.Manifest.permission.BLUETOOTH_SCAN
+            } else {
+                android.Manifest.permission.BLUETOOTH_ADMIN
+            }
+        ),
         onDismiss = { sendIntent(PairingIntent.DismissAlert) },
         onConfirm = { sendIntent(PairingIntent.DismissAlert) },
         onGoToAppSettingsClick = { activity.openAppSettings() })
@@ -136,13 +176,23 @@ fun LaunchBluetoothPermissionActivity(
     sendIntent: (PairingIntent) -> Unit,
 ) {
     if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val permissionToRequest = arrayOf(
+            android.Manifest.permission.BLUETOOTH_SCAN,
+            android.Manifest.permission.BLUETOOTH_CONNECT
+        )
+
         val bluetoothPermissionResultLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestPermission(),
-            onResult = { isGranted -> sendIntent(PairingIntent.OnPermissionResult(isGranted)) }
+            contract = ActivityResultContracts.RequestMultiplePermissions(),
+            onResult = { permissions ->
+                permissionToRequest.forEach { permission ->
+                    val isGranted = permissions[permission] ?: false
+                    sendIntent(PairingIntent.OnPermissionResult(isGranted = isGranted))
+                }
+            }
         )
 
         SideEffect {
-            bluetoothPermissionResultLauncher.launch(android.Manifest.permission.BLUETOOTH_SCAN)
+            bluetoothPermissionResultLauncher.launch(permissionToRequest)
         }
     }
 }
@@ -178,7 +228,10 @@ fun PairingTopContainer(
 }
 
 @Composable
-fun ScanResultColumn(scanDeviceList: List<ScanDeviceVo> = emptyList()) {
+fun ScanResultColumn(
+    scanDeviceList: List<ScanDeviceVo> = emptyList(),
+    sendIntent: (PairingIntent) -> Unit,
+) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -187,33 +240,50 @@ fun ScanResultColumn(scanDeviceList: List<ScanDeviceVo> = emptyList()) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         itemsIndexed(scanDeviceList) { index, scanDevice ->
-            Card(modifier = Modifier
-                .fillMaxWidth()
-                .height(80.dp)
-                .border(1.dp, Color.Black, shape = RoundedCornerShape(10.dp))) {
-
-                Row {
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(text = "MAC 주소: ")
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(text = scanDevice.macAddr)
-                }
-
-                Row {
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(text = "체온: ")
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(text = scanDevice.advData?.temperature.toString())
-                }
-
-                Row {
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(text = "rssi: ")
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(text = scanDevice.rssi.toString())
-                }
-            }
+            ScanResultItem(scanDevice = scanDevice, sendIntent = sendIntent)
             Spacer(modifier = Modifier.height(20.dp))
+        }
+    }
+}
+
+@Composable
+fun Data(label: String, value: String) {
+    Row {
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(text = label)
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(text = value)
+    }
+}
+
+@Composable
+fun ScanResultItem(scanDevice: ScanDeviceVo, sendIntent: (PairingIntent) -> Unit) {
+    Card(modifier = Modifier
+        .fillMaxWidth()
+        .border(1.dp, Color.Black, shape = RoundedCornerShape(10.dp))) {
+
+        Data(label = "MAC 주소: ", value = scanDevice.macAddr)
+        Data(
+            label = "rawData",
+            value = if(scanDevice.packet != null) {
+                ByteUtil.byteToStringHexFormat(scanDevice.packet!!)
+                    .split(" ")
+                    .dropLast(scanDevice.packet!!.size - AdvData.ADV_LENGTH +1)
+                    .joinToString()
+            } else {
+                "null"
+            }
+        )
+        Data(label = "생체정보: ", value = scanDevice.advData.toString())
+        Data(label = "rssi: ", value = scanDevice.rssi.toString())
+
+        Row {
+            Spacer(modifier = Modifier
+                .width(10.dp)
+                .height(20.dp))
+            Button(onClick = { sendIntent(PairingIntent.Connect(scanDevice.macAddr)) }) {
+                Text("연결하기")
+            }
         }
     }
 }
@@ -222,13 +292,13 @@ fun ScanResultColumn(scanDeviceList: List<ScanDeviceVo> = emptyList()) {
 @Preview
 @Composable
 fun PairingScreenPreview() {
-    PairingScreen(state = PairingUIState.Idle(), sendIntent = {})
+    PairingScreen(state = PairUiState.Idle(), sendIntent = {}, completeNavigateTo = {})
 }
 
 @Preview
 @Composable
 fun PairingTopContainerPreview() {
-    PairingTopContainer(buttonText = "스캔하기", onClick = {}, showProgressBar = true)
+    PairingTopContainer(buttonText = "밴드찾기", onClick = {}, showProgressBar = true)
 }
 
 @Preview
@@ -243,5 +313,22 @@ fun ScanResultColumnPreview() {
             advData = null,
         )
     }
-    ScanResultColumn(scanDeviceList = scandevices)
+    ScanResultColumn(scanDeviceList = scandevices, sendIntent = {})
+}
+
+@Preview
+@Composable
+fun ScanReulstItemPreview() {
+    val scanDevice = ScanDeviceVo(
+        macAddr = "00:00:00:00:00:00",
+        name = "BDTB",
+        rssi = -50,
+        packet = null,
+        advData = null,
+    )
+    
+    ScanResultItem(
+        scanDevice = scanDevice,
+        sendIntent = {}
+    )
 }

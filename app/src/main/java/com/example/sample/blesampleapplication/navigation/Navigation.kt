@@ -38,7 +38,7 @@ fun NavContainer(innerPadding: PaddingValues, navHostController: NavHostControll
         composable(PAGE_INFO.Pairing.route) {
             val viewModel: PairingViewModel = hiltViewModel()
             val state by viewModel.uiState.collectAsState()
-            PairingScreen(state = state, sendIntent = viewModel::sendIntent)
+            PairingScreen(state = state, sendIntent = viewModel::sendIntent, completeNavigateTo = { navHostController.navigate(PAGE_INFO.Home.route) })
         }
     }
 }
