@@ -263,8 +263,9 @@ fun ScanResultItem(scanDevice: ScanDeviceVo, sendIntent: (PairingIntent) -> Unit
         .border(1.dp, Color.Black, shape = RoundedCornerShape(10.dp))) {
 
         Data(label = "MAC 주소: ", value = scanDevice.macAddr)
+        Data(label = "디바이스 타입: ", value = scanDevice.advData?.deviceType.toString())
         Data(
-            label = "rawData",
+            label = "rawData: ",
             value = if(scanDevice.packet != null) {
                 ByteUtil.byteToStringHexFormat(scanDevice.packet!!)
                     .split(" ")

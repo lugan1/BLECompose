@@ -5,9 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.sample.blesampleapplication.data.DataStore
 import com.example.sample.blesampleapplication.data.DataStoreKey
+import com.example.sample.blesampleapplication.util.throttleFirst
 import com.softnet.module.blemodule.amoband.AmoOmega
 import com.softnet.module.blemodule.amoband.AmoOmega.BLE_DATE_FORMAT
 import com.softnet.module.blemodule.amoband.command.SetDevice
+import com.softnet.module.blemodule.amoband.enumeration.DeviceType
 import com.softnet.module.blemodule.amoband.model.ScanDeviceVo
 import com.softnet.module.blemodule.ble.enumeration.CheckStatus.*
 import com.softnet.module.blemodule.ble.enumeration.ConnectionState
@@ -15,10 +17,13 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.consumeAsFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
@@ -47,9 +52,11 @@ class PairingViewModel @Inject constructor(
         }
     }
 
+    @OptIn(FlowPreview::class)
     private fun handleIntent() {
         viewModelScope.launch {
             pairingIntent.consumeAsFlow()
+                .debounce(100L)
                 .collect{ intent ->
                     when(intent) {
                         PairingIntent.CheckBLEEnable -> checkBLEEnable()
@@ -106,7 +113,8 @@ class PairingViewModel @Inject constructor(
 
     private fun startScan() {
         _uiState.value = PairUiState.Scanning()
-        val disposable = amoOmega.startScan("", 30)
+        val disposable = amoOmega.startScan("")
+            .filter{ it.advData?.deviceType == DeviceType.IOTA }
             .subscribe(
                 { scanDevice ->
                     _uiState.value = PairUiState.ScanResult(scanDevice)
@@ -119,7 +127,8 @@ class PairingViewModel @Inject constructor(
                 },
                 {
                     _uiState.value = PairUiState.Idle()
-                })
+                }
+            )
 
         compositeDisposable.add(disposable)
     }
@@ -154,7 +163,8 @@ class PairingViewModel @Inject constructor(
                 { throwable -> _uiState.value =
                     PairUiState.ConnectingFail(
                         title = "연결실패",
-                        message = throwable.message ?: "연결 실패했습니다.")
+                        message = throwable.message ?: "연결 실패했습니다."
+                    )
                 }
             )
 
