@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -94,7 +93,7 @@ fun PairingScreen(
                     buttonText = state.buttonText
                     showProgressBar = state.showProgressBar
                 }
-                is PairUiState.ScanResult -> {
+                is PairUiState.OnScanResult -> {
                     val scanDeviceIndex = scanDevices.indexOfFirst { it.macAddr == state.result.macAddr }
                     scanDevices = if (scanDeviceIndex != -1) {
                         scanDevices.mapIndexed { index, device -> if (index == scanDeviceIndex) state.result else device }
@@ -127,7 +126,7 @@ fun PairingScreen(
 
             PairingTopContainer(
                 buttonText = buttonText,
-                onClick = { sendIntent(if(state is PairUiState.Idle) PairingIntent.RequestPermission else PairingIntent.StopScan) },
+                onClick = { sendIntent(if(state is PairUiState.Idle) PairingIntent.StartScan else PairingIntent.StopScan) },
                 showProgressBar = showProgressBar
             )
 
@@ -239,8 +238,8 @@ fun ScanResultColumn(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        itemsIndexed(scanDeviceList) { index, scanDevice ->
-            ScanResultItem(scanDevice = scanDevice, sendIntent = sendIntent)
+        items(scanDeviceList.size) { scanDevice ->
+            ScanResultItem(scanDevice = scanDeviceList[scanDevice], sendIntent = sendIntent)
             Spacer(modifier = Modifier.height(20.dp))
         }
     }

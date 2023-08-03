@@ -11,19 +11,22 @@ import com.softnet.module.blemodule.amoband.AmoOmega.BLE_DATE_FORMAT
 import com.softnet.module.blemodule.amoband.command.SetDevice
 import com.softnet.module.blemodule.amoband.enumeration.DeviceType
 import com.softnet.module.blemodule.amoband.model.ScanDeviceVo
-import com.softnet.module.blemodule.ble.enumeration.CheckStatus.*
+import com.softnet.module.blemodule.ble.enumeration.CheckStatus.BLE_UNSUPPORTED
+import com.softnet.module.blemodule.ble.enumeration.CheckStatus.BLUETOOTH_ENABLE
+import com.softnet.module.blemodule.ble.enumeration.CheckStatus.BLUETOOTH_OFF
+import com.softnet.module.blemodule.ble.enumeration.CheckStatus.BLUETOOTH_ON
+import com.softnet.module.blemodule.ble.enumeration.CheckStatus.BLUETOOTH_UNSUPPORTED
+import com.softnet.module.blemodule.ble.enumeration.CheckStatus.UNAUTHORIZED
 import com.softnet.module.blemodule.ble.enumeration.ConnectionState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.consumeAsFlow
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
@@ -52,41 +55,35 @@ class PairingViewModel @Inject constructor(
         }
     }
 
-    @OptIn(FlowPreview::class)
     private fun handleIntent() {
         viewModelScope.launch {
             pairingIntent.consumeAsFlow()
-                .debounce(100L)
+                .throttleFirst(1000L)
                 .collect{ intent ->
                     when(intent) {
-                        PairingIntent.CheckBLEEnable -> checkBLEEnable()
-                        PairingIntent.RequestPermission -> requestPermission()
+                        PairingIntent.StartScan -> checkBLESupport()
                         is PairingIntent.OnPermissionResult -> onPermissionResult(intent.isGranted)
-                        PairingIntent.StartScan -> startScan()
                         PairingIntent.StopScan -> stopScan()
                         PairingIntent.DismissAlert -> _uiState.value = PairUiState.Idle()
                         is PairingIntent.Connect ->  {
                             if(amoOmega.isScanning) {
                                 stopScan()
+                                delay(100L)
                             }
                             connect(intent.macAddress)
                         }
 
-                        PairingIntent.Dispose -> {
-                            compositeDisposable.dispose()
-                        }
+                        PairingIntent.Dispose -> compositeDisposable.dispose()
                     }
                 }
         }
     }
 
-    private fun checkBLEEnable() {
+    private fun checkBLESupport() {
         when(val checkStatus = amoOmega.checkBleSupport()) {
             UNAUTHORIZED -> requestPermission()
-            BLUETOOTH_ENABLE, BLUETOOTH_ON -> {
-                _uiState.value = PairUiState.RequestPermission
-            }
-            else -> {
+            BLUETOOTH_ENABLE, BLUETOOTH_ON -> startScan()
+            BLUETOOTH_OFF, BLUETOOTH_UNSUPPORTED, BLE_UNSUPPORTED -> {
                 _uiState.value = PairUiState.ScanFail(
                     title = "스캔실패",
                     message = checkStatus.text()
@@ -98,7 +95,8 @@ class PairingViewModel @Inject constructor(
     private fun requestPermission() {
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             _uiState.value = PairUiState.RequestPermission
-        } else {
+        }
+        else {
             _uiState.value = PairUiState.PermissionDenied
         }
     }
@@ -106,7 +104,8 @@ class PairingViewModel @Inject constructor(
     private fun onPermissionResult(isGranted: Boolean) {
         if(isGranted) {
             startScan()
-        } else {
+        }
+        else {
             _uiState.value = PairUiState.PermissionDenied
         }
     }
@@ -114,10 +113,9 @@ class PairingViewModel @Inject constructor(
     private fun startScan() {
         _uiState.value = PairUiState.Scanning()
         val disposable = amoOmega.startScan("")
-            .filter{ it.advData?.deviceType == DeviceType.IOTA }
             .subscribe(
                 { scanDevice ->
-                    _uiState.value = PairUiState.ScanResult(scanDevice)
+                    _uiState.value = PairUiState.OnScanResult(scanDevice)
                 },
                 { throwable ->
                     _uiState.value = PairUiState.ScanFail(
@@ -194,7 +192,7 @@ sealed class PairUiState {
     object PermissionDenied: PairUiState()
 
     data class ScanFail(val title: String, val message: String): PairUiState()
-    data class ScanResult(val result: ScanDeviceVo): PairUiState()
+    data class OnScanResult(val result: ScanDeviceVo): PairUiState()
 
     data class Connecting(val text: String): PairUiState()
     data class ConnectingFail(val title: String, val message: String): PairUiState()
@@ -202,8 +200,6 @@ sealed class PairUiState {
 }
 
 sealed class PairingIntent {
-    object CheckBLEEnable: PairingIntent()
-    object RequestPermission: PairingIntent()
     data class OnPermissionResult(val isGranted: Boolean): PairingIntent()
     object StartScan: PairingIntent()
 
