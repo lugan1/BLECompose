@@ -175,7 +175,7 @@ fun LaunchBluetoothPermissionActivity(
     sendIntent: (PairingIntent) -> Unit,
 ) {
     if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        val permissionToRequest = arrayOf(
+        val permissionToRequest: Array<String> = arrayOf(
             android.Manifest.permission.BLUETOOTH_SCAN,
             android.Manifest.permission.BLUETOOTH_CONNECT
         )
