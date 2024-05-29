@@ -20,6 +20,10 @@ android {
         vectorDrawables {
             useSupportLibrary true
         }
+
+        compileOptions {
+            coreLibraryDesugaringEnabled true
+        }
     }
 
     buildTypes {
@@ -57,7 +61,8 @@ dependencies {
     implementation 'androidx.compose.ui:ui'
     implementation 'androidx.compose.ui:ui-graphics'
     implementation 'androidx.compose.ui:ui-tooling-preview'
-    implementation 'androidx.compose.material3:material3'
+    implementation "androidx.compose.material3:material3:1.1.1"
+    implementation "androidx.compose.material3:material3-window-size-class:1.1.1"
 
 
     testImplementation 'junit:junit:4.13.2'
@@ -67,6 +72,9 @@ dependencies {
     androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
     debugImplementation 'androidx.compose.ui:ui-tooling'
     debugImplementation 'androidx.compose.ui:ui-test-manifest'
+
+    // ConstraintLayout Compose 의존
+    implementation "androidx.constraintlayout:constraintlayout-compose:1.0.1"
 
     // BLE 아모밴드 모듈
     implementation project(':ble-amoband')
@@ -88,6 +96,9 @@ dependencies {
     // Hilt Compose
     implementation 'androidx.hilt:hilt-navigation-compose:1.0.0'
     implementation "org.jetbrains.kotlin:kotlin-reflect:1.9.0"
+
+    //API 24 이상에서만 지원하는 Java8 라이브러리 대체
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.3'
 }
 
 // Allow references to generated code
